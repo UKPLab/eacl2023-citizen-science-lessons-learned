@@ -1,0 +1,13 @@
+    <nav>
+      <a href="/">Home</a> &#124; 
+    <a href="/study">Select Study</a> &#124; 
+     {% if session['logged_in'] %}
+      <a href="/create_study">Create Task</a> &#124; 
+      <a href="/logout">Logout</a> &#124; 
+    {% else %}
+        <a href="/login">Login</a> &#124; 
+
+    {% endif %}
+      <!-- <a href="/registrate"> Register </a> &#124; -->
+      <!-- <a href="/annotation_task_description">Instructions</a> &#124; -->
+    </nav>

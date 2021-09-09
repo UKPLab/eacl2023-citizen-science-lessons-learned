@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>Data Privacy and Informed Consent</h2>
+
+<p>
+In this annotation task, you will be asked to provide annotations for specific tweets. To evaluate and further process the data, we would like to ask you for your informed consent. In the following, we provide a description what data will be collected in this study and with whom and for what purpose the data will be shared with. 
+</p>
+<p>
+<b>Data controller and contact person</b>
+    <div class="tweet">
+    {{ data.userdata.name }}</br>
+    {{ data.userdata.address }} </br>
+    {{ data.userdata.email }}
+    </div>
+</p>
+
+<p>
+<b>Purpose of this study</b>
+    <div class="tweet">
+    {{ data.purpose }}
+    </div>
+</p>
+
+<p><a class="button" href="/consent_data">Next</a></p> 
+{% endblock %}
+

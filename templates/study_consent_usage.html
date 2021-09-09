@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h3>Usage, access, deletion, and publication of the collected data</h3>
+
+<p>
+<b>Usage of the collected data</b>
+    <div class="tweet">
+    {{ data.usage }}
+    </div>
+</p>
+
+<p>
+<b>Third parties to whom the data will be disclosed</b>
+    <div class="tweet">
+    {{ data.publication }}
+    </div>
+</p>
+
+<p>
+<b>How to access, rectify and delete the non-personal data </b>
+    <div class="tweet">
+    {{ data.deletion }}
+    </div>
+</p>
+
+
+<p><a class="button" href="/agree">I consent to the usage of my data (participate in the study).</a></p> 
+<p><a class="button" href="/disagree">I don't agree to the usage of my data (don't participate in the study).</a></p> 
+{% endblock %}
+

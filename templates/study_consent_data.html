@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h3>Collected Data</h3>
+<p>
+    <div class="tweet">
+    <b>Non-personal Data</b>
+    <ul>
+    {% for pub in data.public %}
+        <li>{{ pub }}</li>
+    {% endfor %} 
+    </ul> 
+    <b>Personal Data</b>
+    <ul>
+    {% for pers in data.personal %}
+        <li>{{ pers }}</li>
+    {% endfor %} 
+    </ul> 
+    
+    {% if data.questionnaire.usage %}
+    <p><b>Questionnaire</b></br>
+    <i>After the study, you will additionally be asked to fill out a questionnaire. It will cover the following topics.</i></br></br>
+    {{ data.questionnaire.description }}</p>
+    {% endif %}
+
+    </div>
+</p>
+
+
+<p><a class="button" href="/consent_usage">I am fine with the collected data (proceed to usage, access, delection, and publication of the data).</a></p> 
+<p><a class="button" href="/disagree">I don't agree to the usage of my data (don't participate in the study).</a></p> 
+{% endblock %}
+

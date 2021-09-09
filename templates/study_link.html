@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %} - Annotation{% endblock %}
+
+{% block content %}
+
+    <h3>Next Steps</h3>
+
+        <p>
+            <b>Thank you so far for your cooperation!</b></br>
+            By clicking on the button below, you will be forwarded to an annotation platform where you can login with the credentials provided by us. 
+            Please bookmark the page to directly access the study and follow the guidelines. If you have any questions, please contact the person linked in the study page (the same one who has been listed here).
+            
+        </p>
+
+	<p><a class="button" href="{{ data.url }}">Start the Annotation Task</a></p>
+	
+{% endblock %}
+

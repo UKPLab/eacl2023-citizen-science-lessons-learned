@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %} - Register{% endblock %}
+
+{% block content %}
+      <h3>Register as a new study conductor</h3>
+
+      <form action="/create_user" method="POST">
+        <p>Please enter a participation key (or pseudonym) and a password. Your e-mail, name, and contract will be displayed for informed consent.</p>
+        <div class="fields">
+          Username (for Login): <input type="text" name="username" placeholder="key"></br>
+        </div>
+        <div class="fields">
+          Password (for Login): <input type="text" name="password" placeholder="key"></br>
+        </div>
+        <div class="fields">
+          Name: <input type="text" name="name" placeholder="key"></br>
+        </div>
+        <div class="fields">
+          Address: <input type="text" name="address" placeholder="key"></br>
+        </div>
+        <div class="fields">
+          E-Mail: <input type="text" name="email" placeholder="key"></br>
+        </div>
+        <div class="command">
+          <input type="submit" name="register" value="Register">
+        </div>
+      </form>
+
+{% endblock %}
+

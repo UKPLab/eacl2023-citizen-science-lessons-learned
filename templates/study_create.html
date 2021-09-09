@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %} - Register{% endblock %}
+
+{% block content %}
+
+      <p><i>Cannot find the fields you are looking for? Add some new ones!</i></p>
+      <form action="/add_data" method="POST">
+        
+        <div class="fields">
+        <p> Type of data: <input type="text" name="data_name" placeholder="What data are you collecting?" required> </br> Is this personal data? 
+           <input type="radio" name="personal" value="1" required/> yes
+           <input type="radio" name="personal" value="0" required/> no 
+           <input type="submit" name="add_data" value="Add Data Type">
+        </p>
+        </div>
+      </form>   
+      <hr> 
+
+     <h3>Basic Information</h3>
+
+      <form action="/create_task" method="POST">
+        <p>Name: <input type="text" name="study_name" placeholder="name" required> </br> Url: <input type="text" name="study_url" placeholder="url" required> </p></br>
+           
+        <p>Please specify the purpose of this study.</p>
+           <input type="text" name="study_purpose" placeholder="Purpose of the study" required></br></br>
+           
+       <hr>
+           
+        <h3>Collected Data</h3>    
+           
+        <div class="fields">
+          <b>Non-personal data:</b> </br></br>
+             {% for public in data.public %}
+               <input type="checkbox" name="public" value="{{ public.id }}" /> {{ public.name }} </br>
+            {% endfor %} 
+            </br>
+          <b>Personal data:</b> </br></br>
+             {% for personal in data.personal %}
+               <input type="checkbox" name="personal" value="{{ personal.id }}" /> {{ personal.name }} </br>
+            {% endfor %}    
+
+        </div>
+      
+      
+         <hr>
+         
+      <h3>Post-Study Questionnaire</h3>
+      
+       <p>If your study includes a questionnaire please specify what kind of data will additionally be collected and how it will be used.</p>
+        <textarea id="questionnaire" name="questionnaire" rows="4" cols="50">
+The questionnaire will include XX questions asking you about XXX. The data will be used for additional analysis and published as described above.
+        </textarea>  
+         <hr>
+         <h3>Usage, Access, Deletion and Publication of the data</h3>
+         
+        <p><b>How will the data be used?</b></p>
+        <textarea id="usage" name="usage" rows="4" cols="50" required>
+The collected data will be used to analyze if citizen scientists provide higher quality data compared to crowd-workers.
+        </textarea>
+
+        
+        <p><b>Do you plan to publish the data? If so, how will you anonymize it?</b></p>
+        <textarea id="publication" name="publication" rows="4" cols="50" required>
+An anonymized (your participant ID will be replaced with a randomly assigned ID) version of your provided labels and the time you have taken to annotate each instance will be made publicly availabe at an open access conference under a CC-by license.
+        </textarea>
+        
+
+        <p><b>How can participants request access, change, or deletion of the collected data?</b></p>
+        <textarea id="deletion" name="deletion" rows="4" cols="50" required>
+Please send a mail your participant ID to the contact person above along with the purpose (access, rectify, delete). There is no need to provide any reason for us to take action. Please understand that your participant ID is required for us to identify your provided data.
+        </textarea>
+                
+        <div class="command">
+          <input type="submit" name="create_task" value="Create Task">
+        </div>
+      </form>
+     
+
+{% endblock %}
+
