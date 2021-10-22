@@ -1,5 +1,28 @@
 {% extends 'base.html' %}
 
+<script>
+function handleData()
+{
+    var form_data = new FormData(document.querySelector("form"));
+    
+    if(!form_data.has("langs[]"))
+    {
+        document.getElementById("chk_option_error").style.visibility = "visible";
+      return false;
+    }
+    else
+    {
+        document.getElementById("chk_option_error").style.visibility = "hidden";
+      return true;
+    }
+    
+}
+</script>
+
+{% block title %}- Data Privacy and Informed Consent {% endblock %}
+
+{% block content %}
+
 <h2>Data Privacy and Informed Consent</h2>
 
 <p>
@@ -47,7 +70,6 @@ In this annotation task, you will be asked to provide annotations for specific t
     </div>
 </p>
 
-<p><input type="checkbox" required name="data_usage">I have read and understood the terms regarding the collected data (proceed to usage, access, delection, and publication of the data).</p>
 
 <h3>Usage, access, deletion, and publication of the collected data</h3>
 
@@ -72,18 +94,19 @@ In this annotation task, you will be asked to provide annotations for specific t
     </div>
 </p>
 
-<p><input type="checkbox" required name="data_processing">I have read and understood the terms about the usage of the collected data and consent to its usage of my data.</p>
-
 <h3>Next Steps</h3>
 
     <p>
         <b>Thank you so far for your cooperation!</b></br>
-        By clicking on the button below, you will be forwarded to an annotation platform where you can login with the credentials provided by us. 
+        By agreeing and clicking on the button below, you will be forwarded to an annotation platform where you can login with the credentials provided by us. 
         Please bookmark the page to directly access the study and follow the guidelines. If you have any questions, please contact the person linked in the study page (the same one who has been listed here).
         
     </p>
 
-<p><a class="button" href="{{ data.url }}">Start the Annotation Task</a></p>
+<form id="study" action="/agree">
+    <p><input type="checkbox" required name="data_usage">I have read and understood the terms regarding the collected data (proceed to usage, access, delection, and publication of the data). <b>I consent to the above stated usage of my data.</b></p>
+  <input class="button"type="submit" value="Start the Annotation Task">
+</form>
 <p><a class="button" href="/disagree">I don't want to participate in the study.</a></p> 
 
 {% endblock %}

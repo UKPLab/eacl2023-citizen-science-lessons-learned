@@ -290,12 +290,37 @@ def consent_usage(name=None):
 @app.route('/agree')
 def give_consent(name=None):
     sdata = get_study_data(session['study_id'])
-    return render_template('study_link.html', name=name, data={'url':sdata['url']})
+    return redirect(sdata['url'])
     
 @app.route('/disagree')
 def reject_consent(name=None):
     flash('Thank you for considering participating in the study.')
     return index()
+
+@app.route('/consent_all', methods = ['POST','GET'])
+def consent_all(name=None):
+    sid = int(request.form['study'])
+    session['study_id'] = sid
+    userdata = get_conductor_data(sid)
+    sdata = get_study_data(sid)
+    data = get_consent_data(session['study_id'])
+    if len(data["personal"]) < 1:
+        data["personal"] = ["No personal data will be collected in this study."]
+    if len(data["public"]) < 1:
+        data["public"] = ["No non-personal data will be collected in this study."]     
+
+    data["questionnaire"] = {"usage":False, "description":""}
+    print(sdata['questionnaire'])
+    if sdata['questionnaire'].strip() != "":
+        data["questionnaire"]["usage"] = True
+        data["questionnaire"]["description"] = sdata['questionnaire'].strip()
+    data = sdata
+    data['userdata'] = userdata
+    data['purpose'] = sdata['purpose']
+    data['url'] = sdata['url']
+    
+    return render_template('study_consent_all.html', name=name, data=data)
+
 
 @app.route('/register')
 def registrate(name=None):

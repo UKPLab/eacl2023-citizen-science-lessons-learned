@@ -6,7 +6,7 @@
 
     <h3>Please select a task you are interested in.</h3>
     
-      <form action="/informed_consent" id=result method="POST">
+      <form action="/consent_all" id=result method="POST">
 
             {% for task in data.tasks %}
                <input type="radio" id="{{ task.id }}" name="study" value="{{ task.id }}" required/> {{ task.name }} </br>
