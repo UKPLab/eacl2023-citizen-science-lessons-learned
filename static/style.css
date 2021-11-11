@@ -1,6 +1,7 @@
 body {
-	background: url("background_transparent.png");
+	/*background: url("background_transparent.png");*/
     /*background-repeat: no-repeat;*/
+    background-color: #e6e6e1;
 }
 .page {
 	margin: 30px auto 10px;
@@ -27,7 +28,8 @@ nav {
 }
 
 nav {
-    background-color: #aaa;
+    background-color: #B90F22;
+    color: white; 
 }
 
 img {
@@ -56,7 +58,9 @@ fieldset {
 }
 
 header {
-  background: #aa1;
+    background: url("background_small.png");
+    background-position: center; 
+    height:150px;
 	padding: 20px 5px;	
 	margin: 0px;
 }

@@ -109,7 +109,7 @@ def add_user(username, password, email, name, address):
         passwordhash = hashlib.sha512(bytes(password, 'utf-8')).hexdigest()
         session.add(Users(username=username.encode('utf-8'),password=passwordhash,email=email, name=name, address=address))
         session.commit()
-        user_id = session.query(Users).filter_by(name=username).first().id
+        user_id = session.query(Users).filter_by(username=username).first().id
         
     session.commit()
     session.close()
@@ -149,7 +149,7 @@ def get_consent_data(study_id):
 # NOTE: Only use, when logged in!
 def get_user_id(username):
     session = create_session()
-    user_id = session.query(Users).filter_by(name=username).first().id
+    user_id = session.query(Users).filter_by(username=username).first().id
     session.close()
     return user_id
     
@@ -276,7 +276,6 @@ def consent_data(name=None):
         data["public"] = ["No non-personal data will be collected in this study."]     
 
     data["questionnaire"] = {"usage":False, "description":""}
-    print(sdata['questionnaire'])
     if sdata['questionnaire'].strip() != "":
         data["questionnaire"]["usage"] = True
         data["questionnaire"]["description"] = sdata['questionnaire'].strip()
@@ -310,15 +309,14 @@ def consent_all(name=None):
         data["public"] = ["No non-personal data will be collected in this study."]     
 
     data["questionnaire"] = {"usage":False, "description":""}
-    print(sdata['questionnaire'])
     if sdata['questionnaire'].strip() != "":
         data["questionnaire"]["usage"] = True
         data["questionnaire"]["description"] = sdata['questionnaire'].strip()
-    data = sdata
+    for k,v in sdata.items():
+        data[k] = v
     data['userdata'] = userdata
     data['purpose'] = sdata['purpose']
     data['url'] = sdata['url']
-    
     return render_template('study_consent_all.html', name=name, data=data)
 
 
