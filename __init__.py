@@ -65,6 +65,10 @@ class Consent_Study_Map(Base):
     __table_args__ = {'autoload':True}
     
     
+class Platforms(Base):
+    __tablename__ = 'platforms'
+    __table_args__ = {'autoload':True}
+
 
 ##################################################################
 #		DATABASE FUNCTIONS
@@ -194,6 +198,15 @@ def get_study_data(sid):
             "publication":publication,
             "deletion":deletion,
             "questionnaire":questionnaire}
+            
+def get_link_data(sid, platform):
+    session = create_session()
+    study_data = session.query(Platforms).filter_by(study_id=sid, name=platform).first()
+    link = study_data.link
+    session.query(Platforms).filter_by(study_id=sid, name=platform).update({"count":study_data.count+1})
+    session.commit()
+    session.close()
+    return link
     
 def add_study(name, url, purpose, data_usage, data_publication, data_deletion, questionnaire):
     session = create_session()
@@ -257,6 +270,10 @@ def index(name=None):
 def study(name=None):
     user_studies = get_studies()
     return render_template('study_task.html', name=name, data={'tasks':user_studies})
+    
+@app.route('/help')
+def help(name=None):
+    return render_template('study_help.html', name=name, data={})
 
 @app.route('/informed_consent', methods = ['POST','GET'])
 def informed_consent(name=None):
@@ -288,8 +305,12 @@ def consent_usage(name=None):
     
 @app.route('/agree')
 def give_consent(name=None):
-    sdata = get_study_data(session['study_id'])
-    return redirect(sdata['url'])
+    try:
+        platform = request.args['platform']
+    except KeyError:
+        platform = "other" # in case no answer is provided
+    link = get_link_data(session['study_id'], platform)
+    return redirect(link)
     
 @app.route('/disagree')
 def reject_consent(name=None):
@@ -411,7 +432,7 @@ def logout(name=None):
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host="0.0.0.0", port=int("8080"), debug=True)
 
 
 

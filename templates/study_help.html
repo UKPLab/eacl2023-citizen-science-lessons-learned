@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %} - Login{% endblock %}
+
+{% block content %}
+      <h3>A Brief Introduction to INCEpTION</h3>
+      
+      <p>INCEpTION is a powerful tool, but it's relatively simple to get started. Click the "Annotate" button in the upper left corner to move to the annotation interface. </p>
+      
+          <img src="{{url_for('static', filename='inception1.png')}}" align="middle" />
+      </br></br>
+      <p>This will bring you to the annotation interface. There's a lot going on, but we only need a few buttons!</p>
+      
+     <h3>Guidelines</h3>
+
+      <p>First, let's find the guidelines. You can access these by clicking on the Book icon:</p>
+      
+          <img src="{{url_for('static', filename='inception2.png')}}" align="middle" />
+      </br></br>
+      <p>These will give guidelines for what exactly the project is looking for, how to annotate the documents, and what's important.</p>
+      
+      <p>After having a look at the guidelines, we can now make some annotations! You should see a list of possible options for the provided sentence on the left:</p> 
+            
+          <img src="{{url_for('static', filename='inception3.png')}}" align="middle" />
+      </br>  </br>    
+      <p>Clicking one will select that annotation. From there, just click the complete annotation button:</p> 
+      
+          <img src="{{url_for('static', filename='inception4.png')}}" align="middle" />
+      </br></br>
+      <p>You then need to confirm that this document is complete (documents here are just the single annotation instance). Once done, the system will give you another document! Feel free to do as much or as little as you like. Each instance you annotate will provide us better information about how language is represented, how argumentation works on social media, and how to help determine true and false statements. Thank you for your help!</p> 
+      
+{% endblock %}
+
