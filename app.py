@@ -1,25 +1,14 @@
+import hashlib
+import logging
 import os
 import sys
-import csv
-import json
-import random
-import requests
-import hashlib
-from typing import Any, List, Optional
-from datetime import datetime, timedelta, date
-from json.decoder import JSONDecodeError
 
-from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash, Blueprint, jsonify
-from jinja2 import TemplateNotFound
-
+from flask import Flask, request, session, redirect, render_template, flash
 from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import sessionmaker
+import sqlalchemy as db
 
-from pathlib import Path
-
-import logging
 logging.basicConfig(stream=sys.stderr)
 
 app = Flask(__name__)
@@ -28,46 +17,78 @@ app.config.update(dict(
     DATABASE=os.path.join(app.root_path, 'webapp.db'),
     USERNAME='webadmin',
     PASSWORD='admin',
-    SECRET_KEY = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
+    SECRET_KEY='A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
 ))
 
-engine = create_engine('mysql+mysqlconnector://webadmin:admin@localhost/webapp', 
-        encoding='utf-8', 
-        pool_recycle=3600, 
-        connect_args={'auth_plugin': 'mysql_native_password'})
+engine = create_engine("sqlite:///citizen.db")
 Base = declarative_base(engine)
+metadata_obj = db.MetaData()
+
 
 ##################################################################
 #		DATABASE TABLES
 ##################################################################
 
 
-class Users(Base):
-    __tablename__ = 'users'
-    __table_args__ = {'autoload':True}
+Users = db.Table(
+    'users',
+    metadata_obj,
+    db.Column("id", db.Integer, primary_key=True, autoincrement=True),
+    db.Column('username', db.String),
+    db.Column('password', db.String),
+    db.Column('email', db.String),
+    db.Column('name', db.String),
+    db.Column('address', db.String)
+)
 
-class Studies(Base):
-    __tablename__ = 'studies'
-    __table_args__ = {'autoload':True}
-  
-class Consent(Base):
-    __tablename__ = 'consent'
-    __table_args__ = {'autoload':True}
-    
-       
-class User_Study_Map(Base):
-    __tablename__ = 'user_study_map'
-    __table_args__ = {'autoload':True}
+Studies = db.Table(
+    'studies',
+    metadata_obj,
+    db.Column("id", db.Integer, primary_key=True, autoincrement=True),
+    db.Column('name', db.String),
+    db.Column('url', db.String),
+    db.Column('purpose', db.String),
+    db.Column('data_usage', db.String),
+    db.Column('data_publication', db.String),
+    db.Column('data_deletion', db.String),
+    db.Column('questionnaire', db.String),
+)
+
+Consent = db.Table(
+    'consent',
+    metadata_obj,
+    db.Column("id", db.Integer, primary_key=True, autoincrement=True),
+    db.Column('name', db.String),
+    db.Column('personal', db.String),
+)
+
+UserStudyMap = db.Table(
+    'user_study_map',
+    metadata_obj,
+    db.Column("id", db.Integer, primary_key=True, autoincrement=True),
+    db.Column('user_id', db.Integer),
+    db.Column('study_id', db.Integer),
+)
 
 
-class Consent_Study_Map(Base):
-    __tablename__ = 'consent_study_map'
-    __table_args__ = {'autoload':True}
-    
-    
-class Platforms(Base):
-    __tablename__ = 'platforms'
-    __table_args__ = {'autoload':True}
+ConsentStudyMap = db.Table(
+    'consent_study_map',
+    metadata_obj,
+    db.Column("id", db.Integer, primary_key=True, autoincrement=True),
+    db.Column('consent_id', db.Integer),
+    db.Column('study_id', db.Integer),
+)
+
+Platforms = db.Table(
+    'platforms',
+    metadata_obj,
+    db.Column("id", db.Integer, primary_key=True, autoincrement=True),
+    db.Column('study_id', db.Integer),
+    db.Column('name', db.String),
+)
+
+
+metadata_obj.create_all(engine)
 
 
 ##################################################################
@@ -81,7 +102,8 @@ def create_session():
     Session = sessionmaker(bind=engine)
     session = Session()
     return session
-    
+
+
 def check_user_credentials(username, password):
     session = create_session()
     try:
@@ -94,11 +116,12 @@ def check_user_credentials(username, password):
             return True
         else:
             return False
-        
+
     except AttributeError:
         session.commit()
         session.close()
         return False
+
 
 def add_user(username, password, email, name, address):
     session = create_session()
@@ -107,39 +130,43 @@ def add_user(username, password, email, name, address):
         session.commit()
         session.close()
         return False
-        
+
     except AttributeError:
         # Set user credentials 
         passwordhash = hashlib.sha512(bytes(password, 'utf-8')).hexdigest()
-        session.add(Users(username=username.encode('utf-8'),password=passwordhash,email=email, name=name, address=address))
+        session.add(
+            Users(username=username.encode('utf-8'), password=passwordhash, email=email, name=name, address=address))
         session.commit()
         user_id = session.query(Users).filter_by(username=username).first().id
-        
+
     session.commit()
     session.close()
     return True
-    
+
+
 def get_public_data():
     session = create_session()
     data = session.query(Consent).filter_by(personal=0).all()
-    result = [{'id':d.id, 'name':d.name} for d in data]
+    result = [{'id': d.id, 'name': d.name} for d in data]
     session.commit()
     session.close()
     return result
-    
+
+
 def get_personal_data():
     session = create_session()
     data = session.query(Consent).filter_by(personal=1).all()
-    result = [{'id':d.id, 'name':d.name} for d in data]
+    result = [{'id': d.id, 'name': d.name} for d in data]
     session.commit()
     session.close()
     return result
-    
+
+
 def get_consent_data(study_id):
     session = create_session()
     personal = []
     public = []
-    data = session.query(Consent_Study_Map).filter_by(study_id=study_id).all()
+    data = session.query(ConsentStudyMap).filter_by(study_id=study_id).all()
     for dat in data:
         datatype = session.query(Consent).filter_by(id=dat.consent_id).first()
         if datatype.personal == 1:
@@ -148,22 +175,25 @@ def get_consent_data(study_id):
             public.append(datatype.name)
     session.commit()
     session.close()
-    return {"personal":personal, "public":public}
-    
+    return {"personal": personal, "public": public}
+
+
 # NOTE: Only use, when logged in!
 def get_user_id(username):
     session = create_session()
     user_id = session.query(Users).filter_by(username=username).first().id
     session.close()
     return user_id
-    
+
+
 def get_studies():
     session = create_session()
     studies = session.query(Studies).all()
-    study_data = [{'id':s.id, 'name':s.name} for s in studies]
+    study_data = [{'id': s.id, 'name': s.name} for s in studies]
     session.close()
     return study_data
-    
+
+
 def get_study_id(sname):
     session = create_session()
     try:
@@ -171,14 +201,15 @@ def get_study_id(sname):
         session.commit()
         session.close()
         return sid
-        
+
     except AttributeError:
 
         session.commit()
         session.close()
-        
+
     return False
-    
+
+
 def get_study_data(sid):
     session = create_session()
     study_data = session.query(Studies).filter_by(id=sid).first()
@@ -191,31 +222,36 @@ def get_study_data(sid):
     questionnaire = study_data.questionnaire
     session.commit()
     session.close()
-    return {"name":name,
-            "url":url,
-            "purpose":purpose, 
-            "usage":usage,
-            "publication":publication,
-            "deletion":deletion,
-            "questionnaire":questionnaire}
-            
+    return {"name": name,
+            "url": url,
+            "purpose": purpose,
+            "usage": usage,
+            "publication": publication,
+            "deletion": deletion,
+            "questionnaire": questionnaire}
+
+
 def get_link_data(sid, platform):
     session = create_session()
     study_data = session.query(Platforms).filter_by(study_id=sid, name=platform).first()
     link = study_data.link
-    session.query(Platforms).filter_by(study_id=sid, name=platform).update({"count":study_data.count+1})
+    session.query(Platforms).filter_by(study_id=sid, name=platform).update({"count": study_data.count + 1})
     session.commit()
     session.close()
     return link
-    
+
+
 def add_study(name, url, purpose, data_usage, data_publication, data_deletion, questionnaire):
     session = create_session()
-    consent = session.add(Studies(name=name,url=url, purpose=purpose, data_usage=data_usage, data_publication=data_publication, data_deletion=data_deletion, questionnaire=questionnaire))
+    consent = session.add(
+        Studies(name=name, url=url, purpose=purpose, data_usage=data_usage, data_publication=data_publication,
+                data_deletion=data_deletion, questionnaire=questionnaire))
     session.commit()
     session.close()
-        
+
     return True
-        
+
+
 def add_data_type(name, personal):
     session = create_session()
     try:
@@ -223,66 +259,74 @@ def add_data_type(name, personal):
         session.commit()
         session.close()
         return False
-        
+
     except AttributeError:
         # Set user credentials 
-        session.add(Consent(name=name.encode('utf-8'),personal=personal))
+        session.add(Consent(name=name.encode('utf-8'), personal=personal))
         session.commit()
-        session.close() 
-        
+        session.close()
+
     return True
-  
+
+
 def link_user_study(user_id, study_id):
     session = create_session()
-    session.add(User_Study_Map(user_id=user_id, study_id=study_id)) 
+    session.add(UserStudyMap(user_id=user_id, study_id=study_id))
     session.commit()
-    session.close()   
-    
+    session.close()
+
+
 def add_consent(study_id, data_list):
     session = create_session()
     for data_id in data_list:
-        session.add(Consent_Study_Map(consent_id=data_id, study_id=study_id)) 
+        session.add(ConsentStudyMap(consent_id=data_id, study_id=study_id))
     session.commit()
-    session.close() 
-    
+    session.close()
+
+
 def get_conductor_data(study_id):
     session = create_session()
-    user_id = session.query(User_Study_Map).filter_by(study_id=study_id).first().user_id
+    user_id = session.query(UserStudyMap).filter_by(study_id=study_id).first().user_id
     user_data = session.query(Users).filter_by(id=user_id).first()
     uname = user_data.name
     umail = user_data.email
     uaddress = user_data.address
     session.commit()
     session.close()
-    return {"name":uname, "email":umail, "address":uaddress}
-    
+    return {"name": uname, "email": umail, "address": uaddress}
+
+
 ##################################################################
 #		WEBEND
 ##################################################################
 
 # Starting page for the exercise generator
 @app.route('/')
-@app.route('/index', methods = ['POST','GET'])
+@app.route('/index', methods=['POST', 'GET'])
 def index(name=None):
     return render_template('study_index.html', name=name, data={})
+
 
 @app.route('/study')
 def study(name=None):
     user_studies = get_studies()
-    return render_template('study_task.html', name=name, data={'tasks':user_studies})
-    
+    return render_template('study_task.html', name=name, data={'tasks': user_studies})
+
+
 @app.route('/help')
 def help(name=None):
     return render_template('study_help.html', name=name, data={})
 
-@app.route('/informed_consent', methods = ['POST','GET'])
+
+@app.route('/informed_consent', methods=['POST', 'GET'])
 def informed_consent(name=None):
     sid = int(request.form['study'])
     session['study_id'] = sid
     userdata = get_conductor_data(sid)
     sdata = get_study_data(sid)
-    return render_template('study_conductor.html', name=name, data={'userdata':userdata, 'purpose':sdata['purpose']})
-    
+    return render_template('study_conductor.html', name=name, data={'userdata': userdata, 'purpose': sdata['purpose']})
+
+
 @app.route('/consent_data')
 def consent_data(name=None):
     sdata = get_study_data(session['study_id'])
@@ -290,34 +334,38 @@ def consent_data(name=None):
     if len(data["personal"]) < 1:
         data["personal"] = ["No personal data will be collected in this study."]
     if len(data["public"]) < 1:
-        data["public"] = ["No non-personal data will be collected in this study."]     
+        data["public"] = ["No non-personal data will be collected in this study."]
 
-    data["questionnaire"] = {"usage":False, "description":""}
+    data["questionnaire"] = {"usage": False, "description": ""}
     if sdata['questionnaire'].strip() != "":
         data["questionnaire"]["usage"] = True
         data["questionnaire"]["description"] = sdata['questionnaire'].strip()
     return render_template('study_consent_data.html', name=name, data=data)
-    
+
+
 @app.route('/consent_usage')
 def consent_usage(name=None):
     sdata = get_study_data(session['study_id'])
     return render_template('study_consent_usage.html', name=name, data=sdata)
-    
+
+
 @app.route('/agree')
 def give_consent(name=None):
     try:
         platform = request.args['platform']
     except KeyError:
-        platform = "other" # in case no answer is provided
+        platform = "other"  # in case no answer is provided
     link = get_link_data(session['study_id'], platform)
     return redirect(link)
-    
+
+
 @app.route('/disagree')
 def reject_consent(name=None):
     flash('Thank you for considering participating in the study.')
     return index()
 
-@app.route('/consent_all', methods = ['POST','GET'])
+
+@app.route('/consent_all', methods=['POST', 'GET'])
 def consent_all(name=None):
     sid = int(request.form['study'])
     session['study_id'] = sid
@@ -327,13 +375,13 @@ def consent_all(name=None):
     if len(data["personal"]) < 1:
         data["personal"] = ["No personal data will be collected in this study."]
     if len(data["public"]) < 1:
-        data["public"] = ["No non-personal data will be collected in this study."]     
+        data["public"] = ["No non-personal data will be collected in this study."]
 
-    data["questionnaire"] = {"usage":False, "description":""}
+    data["questionnaire"] = {"usage": False, "description": ""}
     if sdata['questionnaire'].strip() != "":
         data["questionnaire"]["usage"] = True
         data["questionnaire"]["description"] = sdata['questionnaire'].strip()
-    for k,v in sdata.items():
+    for k, v in sdata.items():
         data[k] = v
     data['userdata'] = userdata
     data['purpose'] = sdata['purpose']
@@ -344,6 +392,7 @@ def consent_all(name=None):
 @app.route('/register')
 def registrate(name=None):
     return render_template('study_registrate.html', name=name, data={})
+
 
 # Add a new user
 @app.route('/create_user', methods=['POST'])
@@ -361,25 +410,28 @@ def create_user(name=None):
         session['logged_in'] = True
         return index()
 
+
 @app.route('/create_study')
 def create_study(name=None):
     # fetch personal information
     personal_data = get_personal_data()
     # fetch public information
     public_data = get_public_data()
-    return render_template('study_create.html', name=name, data={'personal':personal_data, 'public':public_data})
+    return render_template('study_create.html', name=name, data={'personal': personal_data, 'public': public_data})
+
 
 # Add new data fields
 @app.route('/add_data', methods=['POST'])
 def add_data(name=None):
     dname = request.form['data_name']
     personal = int(request.form['personal'])
-    if not add_data_type(dname,personal):
+    if not add_data_type(dname, personal):
         flash('{} already exists'.format(dname))
         return create_study()
     else:
         flash('Added {}.'.format(dname))
         return create_study()
+
 
 # Add a new task
 @app.route('/create_task', methods=['POST'])
@@ -396,18 +448,18 @@ def create_task(name=None):
     if not get_study_id(sname):
         add_study(sname, surl, spurpose, susage, spublication, sdeletion, squestionnaire)
         sid = get_study_id(sname)
-        link_user_study(session['user_id'],sid)
+        link_user_study(session['user_id'], sid)
         consent_links = [int(x) for x in personal] + [int(x) for x in public]
         add_consent(sid, consent_links)
         flash('Created task {}.'.format(sname))
-        return index()        
+        return index()
     else:
         flash('Taskname {} is already taken. Please select a different one!'.format(sname))
         return create_study()
 
 
 # Login 
-@app.route('/login', methods=['POST','GET'])
+@app.route('/login', methods=['POST', 'GET'])
 def login(name=None):
     if request.method == 'POST':
         username = request.form['username']
@@ -415,26 +467,22 @@ def login(name=None):
         if check_user_credentials(username, password):
             session['logged_in'] = True
             session['user_id'] = get_user_id(username)
-            return render_template('study_index.html', name=name, data={})        
+            return render_template('study_index.html', name=name, data={})
         else:
             flash('Non existing user or wrong password.')
-            
+
         return index()
-        
+
     else:
         return render_template('study_login.html')
 
+
 # Logout
-@app.route('/logout', methods=['POST','GET'])
+@app.route('/logout', methods=['POST', 'GET'])
 def logout(name=None):
-    session['logged_in']=False
+    session['logged_in'] = False
     return index()
 
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int("8080"), debug=True)
-
-
-
-
-
