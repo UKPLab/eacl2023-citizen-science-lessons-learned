@@ -3,11 +3,12 @@ import logging
 import os
 import sys
 
-from flask import Flask, request, session, redirect, render_template, flash
-from sqlalchemy import *
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 import sqlalchemy as db
+from flask import Flask, request, redirect, render_template, flash
+from flask import session as fsession
+from sqlalchemy import *
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import sessionmaker
 
 logging.basicConfig(stream=sys.stderr)
 
@@ -21,17 +22,24 @@ app.config.update(dict(
 ))
 
 engine = create_engine("sqlite:///citizen.db")
-Base = declarative_base(engine)
 metadata_obj = db.MetaData()
 
+
+CHANNELS = [
+    "twitter",
+    "facebook",
+    "linkedin",
+    "mailing",
+    "stellenwerk",
+    "other"
+]
 
 ##################################################################
 #		DATABASE TABLES
 ##################################################################
 
-
 Users = db.Table(
-    'users',
+    'user',
     metadata_obj,
     db.Column("id", db.Integer, primary_key=True, autoincrement=True),
     db.Column('username', db.String),
@@ -42,7 +50,7 @@ Users = db.Table(
 )
 
 Studies = db.Table(
-    'studies',
+    'study',
     metadata_obj,
     db.Column("id", db.Integer, primary_key=True, autoincrement=True),
     db.Column('name', db.String),
@@ -54,7 +62,7 @@ Studies = db.Table(
     db.Column('questionnaire', db.String),
 )
 
-Consent = db.Table(
+Consents = db.Table(
     'consent',
     metadata_obj,
     db.Column("id", db.Integer, primary_key=True, autoincrement=True),
@@ -62,7 +70,7 @@ Consent = db.Table(
     db.Column('personal', db.String),
 )
 
-UserStudyMap = db.Table(
+UserStudyMaps = db.Table(
     'user_study_map',
     metadata_obj,
     db.Column("id", db.Integer, primary_key=True, autoincrement=True),
@@ -70,8 +78,7 @@ UserStudyMap = db.Table(
     db.Column('study_id', db.Integer),
 )
 
-
-ConsentStudyMap = db.Table(
+ConsentStudyMaps = db.Table(
     'consent_study_map',
     metadata_obj,
     db.Column("id", db.Integer, primary_key=True, autoincrement=True),
@@ -79,24 +86,32 @@ ConsentStudyMap = db.Table(
     db.Column('study_id', db.Integer),
 )
 
-Platforms = db.Table(
-    'platforms',
+Channels = db.Table(
+    'channel',
     metadata_obj,
     db.Column("id", db.Integer, primary_key=True, autoincrement=True),
     db.Column('study_id', db.Integer),
     db.Column('name', db.String),
+    db.Column('url', db.String),
+    db.Column('count', db.Integer),
 )
 
-
 metadata_obj.create_all(engine)
+Base = automap_base(metadata=metadata_obj)
+Base.prepare()
 
+User = Base.classes.user
+Study = Base.classes.study
+Consent = Base.classes.consent
+ConsentStudyMap = Base.classes.consent_study_map
+UserStudyMap = Base.classes.user_study_map
+Channel = Base.classes.channel
 
 ##################################################################
 #		DATABASE FUNCTIONS
 ##################################################################
 
-
-# Create session with all tables 
+# Create session with all tables
 def create_session():
     metadata = Base.metadata
     Session = sessionmaker(bind=engine)
@@ -134,10 +149,12 @@ def add_user(username, password, email, name, address):
     except AttributeError:
         # Set user credentials 
         passwordhash = hashlib.sha512(bytes(password, 'utf-8')).hexdigest()
+
         session.add(
-            Users(username=username.encode('utf-8'), password=passwordhash, email=email, name=name, address=address))
+            User(username=username, password=passwordhash, email=email, name=name, address=address)
+
+        )
         session.commit()
-        user_id = session.query(Users).filter_by(username=username).first().id
 
     session.commit()
     session.close()
@@ -231,21 +248,29 @@ def get_study_data(sid):
             "questionnaire": questionnaire}
 
 
-def get_link_data(sid, platform):
+def get_link_data(sid, channel):
     session = create_session()
-    study_data = session.query(Platforms).filter_by(study_id=sid, name=platform).first()
-    link = study_data.link
-    session.query(Platforms).filter_by(study_id=sid, name=platform).update({"count": study_data.count + 1})
+    study_stats = session.query(Channels).filter_by(study_id=sid, name=channel).first()
+    session.query(Channels).filter_by(study_id=sid, name=channel).update({"count": study_stats.count + 1})
+
+    study = session.query(Studies).filter_by(id=sid).first()
+
     session.commit()
     session.close()
-    return link
+    return study.url
 
 
 def add_study(name, url, purpose, data_usage, data_publication, data_deletion, questionnaire):
     session = create_session()
-    consent = session.add(
-        Studies(name=name, url=url, purpose=purpose, data_usage=data_usage, data_publication=data_publication,
-                data_deletion=data_deletion, questionnaire=questionnaire))
+    session.add( Study(name=name, url=url, purpose=purpose, data_usage=data_usage, data_publication=data_publication,
+          data_deletion=data_deletion, questionnaire=questionnaire))
+    study = session.query(Studies).filter_by(name=name).first()
+
+    for channel in CHANNELS:
+        session.add(
+            Channel(study_id=study.id, name=channel, url=study.url + "?channel=" + channel, count=0)
+        )
+
     session.commit()
     session.close()
 
@@ -262,7 +287,7 @@ def add_data_type(name, personal):
 
     except AttributeError:
         # Set user credentials 
-        session.add(Consent(name=name.encode('utf-8'), personal=personal))
+        session.add(Consent(name=name, personal=personal))
         session.commit()
         session.close()
 
@@ -321,7 +346,7 @@ def help(name=None):
 @app.route('/informed_consent', methods=['POST', 'GET'])
 def informed_consent(name=None):
     sid = int(request.form['study'])
-    session['study_id'] = sid
+    fsession['study_id'] = sid
     userdata = get_conductor_data(sid)
     sdata = get_study_data(sid)
     return render_template('study_conductor.html', name=name, data={'userdata': userdata, 'purpose': sdata['purpose']})
@@ -329,8 +354,8 @@ def informed_consent(name=None):
 
 @app.route('/consent_data')
 def consent_data(name=None):
-    sdata = get_study_data(session['study_id'])
-    data = get_consent_data(session['study_id'])
+    sdata = get_study_data(fsession['study_id'])
+    data = get_consent_data(fsession['study_id'])
     if len(data["personal"]) < 1:
         data["personal"] = ["No personal data will be collected in this study."]
     if len(data["public"]) < 1:
@@ -345,17 +370,17 @@ def consent_data(name=None):
 
 @app.route('/consent_usage')
 def consent_usage(name=None):
-    sdata = get_study_data(session['study_id'])
+    sdata = get_study_data(fsession['study_id'])
     return render_template('study_consent_usage.html', name=name, data=sdata)
 
 
 @app.route('/agree')
 def give_consent(name=None):
     try:
-        platform = request.args['platform']
+        channel = request.args['channel']
     except KeyError:
-        platform = "other"  # in case no answer is provided
-    link = get_link_data(session['study_id'], platform)
+        channel = "other"  # in case no answer is provided
+    link = get_link_data(fsession['study_id'], channel)
     return redirect(link)
 
 
@@ -368,10 +393,10 @@ def reject_consent(name=None):
 @app.route('/consent_all', methods=['POST', 'GET'])
 def consent_all(name=None):
     sid = int(request.form['study'])
-    session['study_id'] = sid
+    fsession['study_id'] = sid
     userdata = get_conductor_data(sid)
     sdata = get_study_data(sid)
-    data = get_consent_data(session['study_id'])
+    data = get_consent_data(fsession['study_id'])
     if len(data["personal"]) < 1:
         data["personal"] = ["No personal data will be collected in this study."]
     if len(data["public"]) < 1:
@@ -407,11 +432,12 @@ def create_user(name=None):
         return registrate()
     else:
         flash('Registrated user {}. Thank you for registering!'.format(username))
-        session['logged_in'] = True
+        fsession['logged_in'] = True
+        fsession['user_id'] = get_user_id(username)
         return index()
 
 
-@app.route('/create_study')
+@app.route('/create_task')
 def create_study(name=None):
     # fetch personal information
     personal_data = get_personal_data()
@@ -448,7 +474,7 @@ def create_task(name=None):
     if not get_study_id(sname):
         add_study(sname, surl, spurpose, susage, spublication, sdeletion, squestionnaire)
         sid = get_study_id(sname)
-        link_user_study(session['user_id'], sid)
+        link_user_study(fsession['user_id'], sid)
         consent_links = [int(x) for x in personal] + [int(x) for x in public]
         add_consent(sid, consent_links)
         flash('Created task {}.'.format(sname))
@@ -465,8 +491,8 @@ def login(name=None):
         username = request.form['username']
         password = request.form['password']
         if check_user_credentials(username, password):
-            session['logged_in'] = True
-            session['user_id'] = get_user_id(username)
+            fsession['logged_in'] = True
+            fsession['user_id'] = get_user_id(username)
             return render_template('study_index.html', name=name, data={})
         else:
             flash('Non existing user or wrong password.')
@@ -480,9 +506,9 @@ def login(name=None):
 # Logout
 @app.route('/logout', methods=['POST', 'GET'])
 def logout(name=None):
-    session['logged_in'] = False
+    fsession['logged_in'] = False
     return index()
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=int("8080"), debug=True)
+    app.run(host="0.0.0.0", port=int("5000"), debug=True)
